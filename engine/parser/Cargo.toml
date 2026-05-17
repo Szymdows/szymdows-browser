@@ -1,0 +1,12 @@
+[package]
+name = "html_parser"
+version = "0.1.0"
+edition = "2021"
+authors = ["Szymdows"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Currently no external dependencies
+# Trying to implement everything myself for learning purposes

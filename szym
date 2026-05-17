@@ -1,0 +1,4 @@
+# Szymdows Browser Build Script Launcher for Linux/WSL
+# This is a wrapper script that calls the Python build system
+
+python3 build/szym.py "$@"

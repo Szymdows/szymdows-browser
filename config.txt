@@ -1,0 +1,21 @@
+# Szymdows Browser Build Configuration
+# This file contains settings for the build system
+
+# Compiler Settings
+# The compiler to use will be detected automatically by CMake
+# but you can specify preferences here if needed
+
+# Build Type
+# Options: Debug, Release, RelWithDebInfo
+BUILD_TYPE=Release
+
+# Optimization Level
+# Higher numbers mean more optimization but slower compile times
+OPTIMIZATION_LEVEL=2
+
+# Enable Warnings
+# This helps catch potential issues in the code
+ENABLE_WARNINGS=true
+
+# Additional compiler flags can be added here
+# (not implemented yet, need to figure out how to pass these to CMake)
