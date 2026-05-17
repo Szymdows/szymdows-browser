@@ -23,7 +23,7 @@ This is my attempt at creating a web browser from scratch. It's called Szymdows 
 - Pkg-config
 - GTK 3 Development Libraries
 
-### You can install all of these dependencies with this command: `sudo apt update && sudo apt install build-essential cmake python3 pkg-config libgtk-3-dev`
+- You can install all of these dependencies with this command: ```sudo apt update && sudo apt install build-essential cmake python3 pkg-config libgtk-3-dev```
 
 ## Known Issues
 
