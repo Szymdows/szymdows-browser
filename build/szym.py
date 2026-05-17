@@ -138,7 +138,7 @@ def run_browser(html_file=None):
         if not os.path.exists(executable):
             executable = os.path.join("build", "output", "Debug", "SzymdowsBrowser.exe")
     else:
-        executable = os.path.join("build", "output", "SzymdowsBrowser")
+        executable = os.path.join("build", "output", "browser", "SzymdowsBrowser")
     
     # Check if executable exists
     if not os.path.exists(executable):

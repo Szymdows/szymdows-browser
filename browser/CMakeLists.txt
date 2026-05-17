@@ -1,27 +1,25 @@
 cmake_minimum_required(VERSION 3.10)
 
-# CMake configuration for the Browser UI component
-# This builds the main browser executable
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
 
-# Create the main browser executable
-# This compiles main.cpp and links it with the renderer library
 add_executable(SzymdowsBrowser
     ui/main.cpp
 )
 
-# Link with the renderer library
-# This makes the rendering functions available to the browser
 target_link_libraries(SzymdowsBrowser 
     renderer
+    ${GTK3_LIBRARIES}
 )
 
-# Add include directories so we can find the headers
 target_include_directories(SzymdowsBrowser PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/../engine/renderer
+    ${GTK3_INCLUDE_DIRS}
 )
 
-# Enable compiler warnings to help catch potential issues
+target_compile_options(SzymdowsBrowser PRIVATE ${GTK3_CFLAGS_OTHER})
+
 if(MSVC)
     target_compile_options(SzymdowsBrowser PRIVATE /W3)
 else()

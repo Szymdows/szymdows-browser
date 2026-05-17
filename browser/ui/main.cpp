@@ -2,97 +2,132 @@
 #include <fstream>
 #include <string>
 #include <sstream>
+#include <gtk/gtk.h>
 #include "window.h"
 #include "../../engine/renderer/render.h"
 
 using namespace std;
 
-// Browser Window Implementation
-
-// Constructor - This initializes the browser window with default values
 BrowserWindow::BrowserWindow() {
     width = 800;
     height = 600;
-    is_running = false;
     content = "";
     title = "Szymdows Browser";
+    
+    window = NULL;
+    scrolled_window = NULL;
+    text_view = NULL;
+    text_buffer = NULL;
     
     cout << "Browser window created" << endl;
 }
 
-// Destructor - This cleans up resources when the window is closed
 BrowserWindow::~BrowserWindow() {
     cout << "Browser window destroyed" << endl;
 }
 
-// This displays the browser chrome (decorative border and title)
-void BrowserWindow::display_chrome() {
-    // Create a decorative border using ASCII characters
-    cout << string(60, '=') << endl;
-    cout << "  " << title << endl;
-    cout << string(60, '=') << endl;
-    cout << endl;
+void BrowserWindow::setup_ui() {
+    window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(window), title.c_str());
+    gtk_window_set_default_size(GTK_WINDOW(window), width, height);
+    
+    g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
+    
+    scrolled_window = gtk_scrolled_window_new(NULL, NULL);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled_window),
+                                   GTK_POLICY_AUTOMATIC,
+                                   GTK_POLICY_AUTOMATIC);
+    
+    text_view = gtk_text_view_new();
+    gtk_text_view_set_editable(GTK_TEXT_VIEW(text_view), FALSE);
+    gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(text_view), FALSE);
+    gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(text_view), GTK_WRAP_WORD);
+    
+    gtk_text_view_set_left_margin(GTK_TEXT_VIEW(text_view), 10);
+    gtk_text_view_set_right_margin(GTK_TEXT_VIEW(text_view), 10);
+    gtk_text_view_set_top_margin(GTK_TEXT_VIEW(text_view), 10);
+    gtk_text_view_set_bottom_margin(GTK_TEXT_VIEW(text_view), 10);
+    
+    text_buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(text_view));
+    
+    if (!content.empty()) {
+        gtk_text_buffer_set_text(text_buffer, content.c_str(), -1);
+    }
+    
+    gtk_container_add(GTK_CONTAINER(scrolled_window), text_view);
+    gtk_container_add(GTK_CONTAINER(window), scrolled_window);
+    
+    GtkCssProvider* css_provider = gtk_css_provider_new();
+    const gchar* css_data = "textview { background-color: white; color: black; font-family: monospace; font-size: 12pt; }";
+    gtk_css_provider_load_from_data(css_provider, css_data, -1, NULL);
+    
+    GtkStyleContext* context = gtk_widget_get_style_context(text_view);
+    gtk_style_context_add_provider(context,
+                                   GTK_STYLE_PROVIDER(css_provider),
+                                   GTK_STYLE_PROVIDER_PRIORITY_USER);
+    
+    cout << "UI setup complete" << endl;
 }
 
-// This shows the window to the user
 void BrowserWindow::show() {
-    display_chrome();
+    if (window) {
+        gtk_widget_show_all(window);
+        cout << "Window displayed" << endl;
+    }
 }
 
-// This sets the content that will be displayed in the window
 void BrowserWindow::set_content(const string& c) {
     content = c;
+    
+    if (text_buffer) {
+        gtk_text_buffer_set_text(text_buffer, content.c_str(), -1);
+    }
 }
 
-// This sets the window title
 void BrowserWindow::set_title(const string& t) {
     title = t;
+    
+    if (window) {
+        gtk_window_set_title(GTK_WINDOW(window), title.c_str());
+    }
 }
 
-// This is the main event loop for the browser window
-// It displays the content and waits for user input
 void BrowserWindow::run() {
-    is_running = true;
+    cout << "Setting up user interface..." << endl;
+    setup_ui();
     
-    // Show the window chrome
+    cout << "Showing window..." << endl;
     show();
     
-    // Display the rendered content
-    cout << content << endl;
+    cout << "Starting GTK main loop..." << endl;
+    cout << "Window is now open. Close the window to exit." << endl;
     
-    // Wait for user to press enter before closing
-    // TODO: In a real browser this would be an actual event loop
-    // handling mouse clicks, scrolling, keyboard input, etc.
-    cout << endl;
-    cout << "Press Enter to close the browser...";
-    string dummy;
-    getline(cin, dummy);
+    gtk_main();
     
-    is_running = false;
+    cout << "GTK main loop ended" << endl;
 }
 
-// Main function - This is the entry point for the browser application
 int main(int argc, char* argv[]) {
     cout << "Starting Szymdows Browser..." << endl;
     cout << endl;
     
-    // Default test HTML to display if no file is provided
-    // This helps with testing during development
+    gtk_init(&argc, &argv);
+    cout << "GTK initialized" << endl;
+    
     string html_content = 
         "<h1>Welcome to Szymdows Browser</h1>"
         "<p>This is a simple web browser built from scratch using C++ and Rust.</p>"
         "<h1>Current Features</h1>"
-        "<p>Right now the browser can render h1 and p tags. More features coming soon!</p>";
+        "<p>Right now the browser can render h1 and p tags in a graphical window!</p>"
+        "<h1>New in this version</h1>"
+        "<p>The browser now has a real graphical user interface using GTK. You can see the rendered content in an actual window instead of just the terminal.</p>";
     
-    // Check if the user provided an HTML file as a command line argument
     if (argc > 1) {
         string filename = argv[1];
         cout << "Loading HTML file: " << filename << endl;
         
-        // Try to open and read the file
         ifstream file(filename);
         if (file.is_open()) {
-            // Read the entire file into a string
             stringstream buffer;
             buffer << file.rdbuf();
             html_content = buffer.str();
@@ -100,34 +135,27 @@ int main(int argc, char* argv[]) {
             
             cout << "File loaded successfully" << endl;
         } else {
-            // File couldn't be opened
             cerr << "Error: Could not open file '" << filename << "'" << endl;
             cerr << "Using default test content instead" << endl;
         }
         cout << endl;
     }
     
-    // Create the renderer
     cout << "Initializing renderer..." << endl;
     Renderer renderer;
     
-    // Render the HTML content
     cout << "Rendering HTML..." << endl;
     renderer.render(html_content);
     
-    // Get the rendered output from the renderer
     string rendered_output = renderer.get_output();
     cout << "Rendering complete" << endl;
     cout << endl;
     
-    // Create the browser window
     cout << "Creating browser window..." << endl;
     BrowserWindow window;
     
-    // Set the rendered content in the window
     window.set_content(rendered_output);
     
-    // Run the browser (this will display the window and wait for user input)
     window.run();
     
     cout << endl;
