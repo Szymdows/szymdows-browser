@@ -28,7 +28,7 @@ This is my attempt at creating a web browser from scratch. It's called Szymdows 
 ## Known Issues
 
 - Nested HTML tags don't work properly yet (I'm trying to figure out how to handle them)
-- The UI is very basic right now, it just displays text in the terminal
+- The UI is very basic right now, it just displays text in a minimal window
 - Memory management might have some issues, still learning about that
 
 ## Planned Features
