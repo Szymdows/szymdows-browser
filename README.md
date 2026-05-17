@@ -20,6 +20,10 @@ This is my attempt at creating a web browser from scratch. It's called Szymdows 
 - C++ compiler (MSVC on Windows or GCC/Clang on Linux)
 - CMake version 3.10 or higher
 - Python 3 for the build script
+- Pkg-config
+- GTK 3 Development Libraries
+
+### You can install all of these dependencies with this command: `sudo apt update && sudo apt install build-essential cmake python3 pkg-config libgtk-3-dev`
 
 ## Known Issues
 
