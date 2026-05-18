@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.10)
 # Main CMake configuration file for Szymdows Browser
 # This coordinates building all the C++ components
 
-project(SzymdowsBrowser VERSION 0.1.1)
+project(SzymdowsBrowser VERSION 0.1.2)
 
 # Set C++ standard to C++11
 # This is needed for modern C++ features like auto, lambdas, etc.

@@ -34,7 +34,7 @@ This is my attempt at creating a web browser from scratch. It's called Szymdows 
 ## Planned Features
 
 - Support for more HTML tags (div, span, a, etc.)
-- Actual graphical rendering instead of just text
+- Actual graphical rendering instead of just formatted text in a minimal window
 - CSS support eventually
 - JavaScript support (this will be really hard)
 
