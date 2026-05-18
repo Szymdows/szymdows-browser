@@ -41,3 +41,63 @@ This is my attempt at creating a web browser from scratch. It's called Szymdows 
 ## Notes
 
 This is my first time building something this complex, so the code might not be perfect. I'm learning as I go and trying to understand how browser engines work by reading about Gecko and Blink.
+
+# Windows Setup Guide for Szymdows Browser
+
+## Warning
+
+Setting up on Windows is more complex than Linux/WSL. If possible, use WSL2 instead.
+
+## Prerequisites
+
+### 1. Visual Studio
+
+- Download Visual Studio Community from https://visualstudio.microsoft.com/
+- During installation, select "Desktop development with C++"
+- Restart after installation
+
+### 2. CMake
+
+- Download from https://cmake.org/download/
+- Get the Windows installer
+- During installation, select "Add CMake to system PATH"
+
+### 3. Rust
+
+- Go to https://rustup.rs/
+- Download and run rustup-init.exe
+- Follow the prompts (default options are fine)
+- Restart your terminal after installation
+
+### 4. Python 3
+
+- Download from https://python.org/downloads/
+- Run installer
+- **IMPORTANT**: Check "Add Python to PATH" during installation
+
+### 5. GTK for Windows (The Hard Part)
+
+- Download GTK Runtime from: https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases
+- Install to default location (usually C:\Program Files\GTK3-Runtime Win64)
+- Add to PATH: `C:\Program Files\GTK3-Runtime Win64\bin`
+- Add to PKG_CONFIG_PATH: `C:\Program Files\GTK3-Runtime Win64\lib\pkgconfig`
+
+### Setting Environment Variables
+
+1. Search for "Environment Variables" in Windows
+2. Click "Environment Variables"
+3. Under "System Variables", find "Path", click Edit
+4. Add: `C:\Program Files\GTK3-Runtime Win64\bin`
+5. Create new variable: PKG_CONFIG_PATH = `C:\Program Files\GTK3-Runtime Win64\lib\pkgconfig`
+
+## Building
+
+Open Command Prompt or PowerShell, and type in: `szym.bat build`
+
+## If GTK doesn't work...
+
+Consider using WSL2 instead. It's much simpler!
+
+## WSL:
+
+I really do recommend installing and using WSL since it's much easier to build and test this web engine/browser!
