@@ -4,9 +4,19 @@ This is my attempt at creating a web browser from scratch. It's called Szymdows 
 
 ## Building the Project
 
-### To build, run the following command: `./szym build`
+### For Linux and WSL:
 
-### To run the browser after building: `./szym run`
+#### To build, run the following command: `./szym build`
+
+#### To run the browser after building: `./szym run`
+
+### For Windows:
+
+#### To build, run the following command: `szym.bat build`
+
+#### To run the browser after building: `szym.bat run`
+
+### Follow the Windows requirement install guide! [Windows Setup Guide](https://github.com/Szymdows/szymdows-browser#windows-setup-guide-for-szymdows-browser)
 
 ## What Works Right Now
 
@@ -93,6 +103,10 @@ Setting up on Windows is more complex than Linux/WSL. If possible, use WSL2 inst
 ## Building
 
 Open Command Prompt or PowerShell, and type in: `szym.bat build`
+
+## Running
+
+Open Command Prompt or PowerShell, and type in: `szym.bat run`
 
 ## If GTK doesn't work...
 
