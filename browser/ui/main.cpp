@@ -3,6 +3,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <map>
 #include <gtk/gtk.h>
 #include "window.h"
 
@@ -10,6 +11,7 @@ using namespace std;
 
 // Browser Window Implementation with GTK
 // This file contains all the code for creating and managing the browser window
+// Now uses a map-based system for tag rendering instead of if/else chains
 
 // Constructor - This initializes the browser window with default values
 BrowserWindow::BrowserWindow() {
@@ -31,6 +33,42 @@ BrowserWindow::BrowserWindow() {
 BrowserWindow::~BrowserWindow() {
     cout << "Browser window destroyed" << endl;
     // GTK handles cleanup of widgets automatically so we don't need to do much here
+}
+
+// This initializes the tag styles map with all supported HTML tags
+// Adding a new tag is just adding one line here - much easier than if/else chains
+void BrowserWindow::initialize_tag_styles() {
+    // h1 - Main heading, large and bold
+    tag_styles["h1"] = {2.0, PANGO_WEIGHT_BOLD, "#000000", 15, 10};
+    
+    // h2 - Secondary heading, slightly smaller than h1
+    tag_styles["h2"] = {1.5, PANGO_WEIGHT_BOLD, "#1a1a1a", 12, 8};
+    
+    // h3 - Tertiary heading
+    tag_styles["h3"] = {1.3, PANGO_WEIGHT_BOLD, "#1a1a1a", 10, 6};
+    
+    // p - Normal paragraph text
+    tag_styles["p"] = {1.0, PANGO_WEIGHT_NORMAL, "#333333", 0, 12};
+    
+    // You can easily add more tags here:
+    // tag_styles["h4"] = {1.2, PANGO_WEIGHT_BOLD, "#1a1a1a", 8, 5};
+    // tag_styles["blockquote"] = {1.0, PANGO_WEIGHT_NORMAL, "#666666", 5, 5};
+    // etc.
+    
+    cout << "Initialized " << tag_styles.size() << " tag styles" << endl;
+}
+
+// This creates a GTK text tag with the specified style properties
+// It takes the style information and creates a GTK tag that can be applied to text
+void BrowserWindow::create_text_tag(const string& tag_name, const TagStyle& style) {
+    // Create a GTK text tag with all the style properties
+    gtk_text_buffer_create_tag(text_buffer, tag_name.c_str(),
+                              "weight", style.weight,
+                              "scale", style.scale,
+                              "foreground", style.color.c_str(),
+                              "pixels-above-lines", style.pixels_above,
+                              "pixels-below-lines", style.pixels_below,
+                              NULL);
 }
 
 // This sets up all the GTK user interface widgets
@@ -69,25 +107,18 @@ void BrowserWindow::setup_ui() {
     // The buffer is where we actually store and format the text
     text_buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(text_view));
     
-    // Create text tags for different HTML elements
-    // These tags define how different elements should look
+    // Initialize the tag styles map
+    // This sets up all the styling information for different HTML tags
+    initialize_tag_styles();
     
-    // h1 tag - large bold text for headings
-    // Using scale 2.0 means it's twice as big as normal text
-    gtk_text_buffer_create_tag(text_buffer, "h1",
-                              "weight", PANGO_WEIGHT_BOLD,  // Make it bold
-                              "scale", 2.0,  // 2x normal size
-                              "foreground", "#000000",  // Black color
-                              "pixels-above-lines", 15,  // Space above
-                              "pixels-below-lines", 10,  // Space below
-                              NULL);
-    
-    // p tag - normal paragraph text
-    // This is for regular content
-    gtk_text_buffer_create_tag(text_buffer, "p",
-                              "foreground", "#333333",  // Dark gray color
-                              "pixels-below-lines", 12,  // Space below paragraph
-                              NULL);
+    // Create GTK text tags for each style in the map
+    // This is way better than manually creating each tag with if/else statements
+    for (auto& pair : tag_styles) {
+        const string& tag_name = pair.first;
+        const TagStyle& style = pair.second;
+        create_text_tag(tag_name, style);
+        cout << "Created text tag for: " << tag_name << endl;
+    }
     
     // Add the text view to the scrolled window
     gtk_container_add(GTK_CONTAINER(scrolled_window), text_view);
@@ -165,6 +196,7 @@ vector<HTMLElement> BrowserWindow::parse_html(const string& html) {
 
 // This renders HTML by inserting text with proper formatting tags
 // It parses the HTML and applies different styles to different elements
+// Now uses a map lookup instead of if/else chains - much faster and cleaner!
 void BrowserWindow::render_html(const string& html) {
     // Make sure we have a text buffer to work with
     if (!text_buffer) {
@@ -192,6 +224,7 @@ void BrowserWindow::render_html(const string& html) {
     GtkTextIter iter;
     
     // Insert each element with appropriate formatting
+    // This is the improved version using map lookup instead of if/else
     for (size_t i = 0; i < elements.size(); i++) {
         const HTMLElement& elem = elements[i];
         
@@ -200,29 +233,25 @@ void BrowserWindow::render_html(const string& html) {
         // Get the end iterator (where we'll insert the next text)
         gtk_text_buffer_get_end_iter(text_buffer, &iter);
         
-        // Insert the text with the appropriate formatting tag
-        if (elem.tag == "h1") {
-            cout << "Inserting h1: " << elem.content << endl;
-            // Insert as h1 - big bold heading
+        // Look up the tag in our styles map
+        // This is O(log n) lookup instead of checking each if condition
+        auto style_it = tag_styles.find(elem.tag);
+        
+        if (style_it != tag_styles.end()) {
+            // We found a style for this tag! Apply it
+            cout << "Inserting " << elem.tag << ": " << elem.content << endl;
+            
             gtk_text_buffer_insert_with_tags_by_name(text_buffer, &iter,
                                                      elem.content.c_str(), -1,
-                                                     "h1", NULL);
-            // Add newline after heading for spacing
-            gtk_text_buffer_get_end_iter(text_buffer, &iter);
-            gtk_text_buffer_insert(text_buffer, &iter, "\n", -1);
-        } else if (elem.tag == "p") {
-            cout << "Inserting p: " << elem.content << endl;
-            // Insert as p - normal paragraph text
-            gtk_text_buffer_insert_with_tags_by_name(text_buffer, &iter,
-                                                     elem.content.c_str(), -1,
-                                                     "p", NULL);
-            // Add newline after paragraph for spacing
+                                                     elem.tag.c_str(), NULL);
+            
+            // Add newline after element for spacing
             gtk_text_buffer_get_end_iter(text_buffer, &iter);
             gtk_text_buffer_insert(text_buffer, &iter, "\n", -1);
         } else {
-            cout << "Inserting unknown tag: " << elem.content << endl;
-            // Unknown tag, just insert as plain text
-            // This way we don't crash if there's a tag we don't recognize
+            // Unknown tag - just render as plain text
+            // This way we don't crash if there's a tag we don't recognize yet
+            cout << "Unknown tag '" << elem.tag << "', rendering as plain text" << endl;
             gtk_text_buffer_insert(text_buffer, &iter, elem.content.c_str(), -1);
             gtk_text_buffer_get_end_iter(text_buffer, &iter);
             gtk_text_buffer_insert(text_buffer, &iter, "\n", -1);
@@ -271,6 +300,7 @@ void BrowserWindow::run() {
     cout << "GTK main loop ended" << endl;
 }
 
+// Main function - This is the entry point for the browser application
 int main(int argc, char* argv[]) {
     cout << "Starting Szymdows Browser..." << endl;
     cout << endl;
@@ -282,13 +312,16 @@ int main(int argc, char* argv[]) {
     
     // Default test HTML to display if no file is provided
     // This helps with testing during development
+    // Now includes h2 and h3 tags to test the new map-based system!
     string html_content = 
         "<h1>Welcome to Szymdows Browser</h1>"
         "<p>This is a simple web browser built from scratch using C++ and Rust.</p>"
-        "<h1>Current Features</h1>"
-        "<p>The browser now renders HTML with proper text formatting! Headings are large and bold, paragraphs are normal text.</p>"
-        "<h1>Technical Details</h1>"
-        "<p>This browser uses GTK for the user interface and custom HTML parsing to render content with different text sizes and styles.</p>";
+        "<h2>Improved Rendering System</h2>"
+        "<p>The browser now uses a map-based tag rendering system instead of if/else chains. This makes it much easier to add new tags!</p>"
+        "<h3>How It Works</h3>"
+        "<p>Each tag has a TagStyle structure that defines its appearance. The renderer just looks up the tag in a map and applies the style. No more long if/else statements!</p>"
+        "<h2>Adding New Tags</h2>"
+        "<p>To add a new tag, just add one line to the tag_styles map in initialize_tag_styles(). That's it!</p>";
     
     // Check if the user provided an HTML file as a command line argument
     if (argc > 1) {
