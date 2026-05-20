@@ -2,12 +2,11 @@ cmake_minimum_required(VERSION 3.10)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
+find_package(CURL REQUIRED)
 
 # Find the Rust library
-# The Rust library will be in engine/parser/target/release
 set(RUST_LIB_DIR ${CMAKE_SOURCE_DIR}/engine/parser/target/release)
 
-# On Linux it's libhtml_parser.so, on Windows it's html_parser.dll
 if(WIN32)
     set(RUST_LIB ${RUST_LIB_DIR}/html_parser.dll.lib)
 else()
@@ -21,14 +20,16 @@ add_executable(SzymdowsBrowser
 target_link_libraries(SzymdowsBrowser 
     renderer
     ${GTK3_LIBRARIES}
-    ${RUST_LIB}  # Link with the Rust library!
+    ${RUST_LIB}
+    ${CURL_LIBRARIES}  # Add curl for HTTP requests
 )
 
 target_include_directories(SzymdowsBrowser PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/../engine/renderer
-    ${CMAKE_CURRENT_SOURCE_DIR}/../engine/parser  # For parser_ffi.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/../engine/parser
     ${GTK3_INCLUDE_DIRS}
+    ${CURL_INCLUDE_DIRS}
 )
 
 target_compile_options(SzymdowsBrowser PRIVATE ${GTK3_CFLAGS_OTHER})

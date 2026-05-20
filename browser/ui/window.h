@@ -4,13 +4,13 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <deque>
 #include <gtk/gtk.h>
 
 // Structure to hold parsed HTML elements
-// This stores information about each HTML tag we parse
 struct HTMLElement {
-    std::string tag;       // The tag name like "h1" or "p"
-    std::string content;   // The text inside the tag
+    std::string tag;
+    std::string content;
 };
 
 // Structure to define how each tag should be styled
@@ -20,6 +20,12 @@ struct TagStyle {
     std::string color;
     int pixels_above;
     int pixels_below;
+};
+
+// Structure to represent a page in navigation history
+struct HistoryEntry {
+    std::string url;
+    std::string html_content;
 };
 
 class BrowserWindow {
@@ -33,38 +39,52 @@ public:
     void set_title(const std::string& title);
     void setup_ui();
     
+    // New navigation methods
+    void navigate_to(const std::string& url);
+    void go_back();
+    void go_forward();
+    void refresh();
+    
     GtkWidget* get_window() { return window; }
     
 private:
     std::string title;
     int width;
     int height;
-    std::string current_url;  // Store the current URL/location
+    std::string current_url;
     
-    // GTK widgets for the main window
+    // Navigation history
+    std::deque<HistoryEntry> history;  // Stores all visited pages
+    int history_position;  // Current position in history (-1 means no history)
+    
+    // GTK widgets
     GtkWidget* window;
-    GtkWidget* main_vbox;          // Vertical box to hold toolbar and content
-    GtkWidget* toolbar;            // Toolbar at the top
-    GtkWidget* back_button;        // Back navigation button
-    GtkWidget* forward_button;     // Forward navigation button
-    GtkWidget* refresh_button;     // Refresh button
-    GtkWidget* url_entry;          // URL/search bar
-    GtkWidget* scrolled_window;    // Scrollable area for content
-    GtkWidget* text_view;          // Text display widget
-    GtkTextBuffer* text_buffer;    // Buffer that holds the actual text
+    GtkWidget* main_vbox;
+    GtkWidget* toolbar;
+    GtkWidget* back_button;
+    GtkWidget* forward_button;
+    GtkWidget* refresh_button;
+    GtkWidget* url_entry;
+    GtkWidget* scrolled_window;
+    GtkWidget* text_view;
+    GtkTextBuffer* text_buffer;
     
     std::map<std::string, TagStyle> tag_styles;
     
     void initialize_tag_styles();
     void render_html(const std::string& html);
     void create_text_tag(const std::string& tag_name, const TagStyle& style);
-    
-    // New functions for the toolbar
     void create_toolbar();
     void set_window_icon();
+    void update_url_bar();
+    void update_navigation_buttons();
     
-    // Static callback functions for button clicks
-    // These need to be static so GTK can call them
+    // HTTP fetching
+    std::string fetch_url(const std::string& url);
+    std::string create_search_url(const std::string& query);
+    bool is_url(const std::string& text);
+    
+    // Static callback functions
     static void on_back_clicked(GtkWidget* widget, gpointer data);
     static void on_forward_clicked(GtkWidget* widget, gpointer data);
     static void on_refresh_clicked(GtkWidget* widget, gpointer data);

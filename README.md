@@ -16,7 +16,7 @@ This is my attempt at creating a web browser from scratch. It's called Szymdows 
 
 #### To run the browser after building: `szym.bat run`
 
-### Follow the Windows requirement install guide! [Windows Setup Guide](https://github.com/Szymdows/szymdows-browser#windows-setup-guide-for-szymdows-browser)
+### outdated - Follow the Windows requirement install guide! [Windows Setup Guide](https://github.com/Szymdows/szymdows-browser#windows-setup-guide-for-szymdows-browser)
 
 ## What Works Right Now
 
@@ -33,7 +33,7 @@ This is my attempt at creating a web browser from scratch. It's called Szymdows 
 - Pkg-config
 - GTK 3 Development Libraries
 
-- You can install all of these dependencies with this command: `sudo apt update && sudo apt install build-essential cmake python3 pkg-config libgtk-3-dev`
+- You can install all of these dependencies with this command: `sudo apt update && sudo apt install build-essential cmake python3 pkg-config libgtk-3-dev libcurl4-openssl-dev`
 
 ## Known Issues
 
@@ -52,7 +52,7 @@ This is my attempt at creating a web browser from scratch. It's called Szymdows 
 
 This is my first time building something this complex, so the code might not be perfect. I'm learning as I go and trying to understand how browser engines work by reading about Gecko and Blink.
 
-# Windows Setup Guide for Szymdows Browser
+# Windows Setup Guide for Szymdows Browser - outdated
 
 ## Warning
 

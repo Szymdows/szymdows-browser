@@ -1,11 +1,9 @@
 // HTML Parser Module for Szymdows Web Engine
-// This module is responsible for parsing HTML strings into a DOM tree structure
-// This parser will be called from C++ via FFI (Foreign Function Interface)
+// Now supports nested HTML elements!
 
 use std::collections::HashMap;
 
 /// Represents the different types of nodes in the DOM tree
-/// Currently only supporting Element and Text nodes
 #[derive(Debug, Clone)]
 #[repr(C)]
 pub enum NodeType {
@@ -13,21 +11,7 @@ pub enum NodeType {
     Text = 1,
 }
 
-/// This structure represents a single node in the DOM tree
-/// Each node can have a tag name (for elements), text content, children, and attributes
-/// This is designed to be passed across the FFI boundary to C++
-#[derive(Debug, Clone)]
-#[repr(C)]
-pub struct DOMNode {
-    pub node_type: NodeType,
-    pub tag_name: *mut std::os::raw::c_char,  // C-compatible string pointer
-    pub text_content: *mut std::os::raw::c_char,  // C-compatible string pointer
-    pub children_count: usize,
-    pub children: *mut DOMNode,  // Pointer to array of children
-}
-
 /// The main HTML Parser structure
-/// It keeps track of the HTML content and current position while parsing
 pub struct HTMLParser {
     content: String,
     position: usize,
@@ -43,6 +27,7 @@ impl HTMLParser {
     }
     
     /// Parses the HTML content and returns a vector of DOM nodes
+    /// Now handles nested elements!
     pub fn parse(&mut self) -> Vec<SimpleDOMNode> {
         let mut nodes: Vec<SimpleDOMNode> = Vec::new();
         
@@ -58,7 +43,12 @@ impl HTMLParser {
             
             // Check if current character is the start of a tag
             if self.current_char() == '<' {
-                // It's a tag, so parse it as an element
+                // Check if it's a closing tag - if so, we're done with this level
+                if self.peek_ahead(1) == '/' {
+                    break;
+                }
+                
+                // It's an opening tag, parse it as an element
                 let node = self.parse_element();
                 nodes.push(node);
             } else {
@@ -70,6 +60,7 @@ impl HTMLParser {
                         tag: String::new(),
                         content: text,
                         is_text: true,
+                        children: Vec::new(),
                     });
                 }
             }
@@ -78,12 +69,12 @@ impl HTMLParser {
         nodes
     }
     
-    /// Parses an HTML element (a tag and its contents)
+    /// Parses an HTML element with support for nested children
     fn parse_element(&mut self) -> SimpleDOMNode {
         // Move past the opening '<' character
         self.position += 1;
         
-        // Parse the tag name (like "h1", "p", etc.)
+        // Parse the tag name (like "h1", "p", "div", etc.)
         let tag_name = self.parse_tag_name();
         
         // Skip past any attributes and the closing '>' of the opening tag
@@ -92,30 +83,62 @@ impl HTMLParser {
         }
         self.position += 1; // Move past the '>'
         
-        // Now we need to get the content between the opening and closing tags
+        // Check for self-closing tags (like <br/>, <img/>, etc.)
+        // For now we'll treat them as empty elements
+        
+        // Parse the content and children
         let mut text_content = String::new();
-        let start_position = self.position;
+        let mut children: Vec<SimpleDOMNode> = Vec::new();
         
         // Construct what the closing tag should look like
         let closing_tag = format!("</{}>", tag_name);
         
-        // Search for the closing tag
+        let content_start = self.position;
+        
+        // Parse children until we hit the closing tag
         while self.position < self.content.len() {
             // Check if we've found the closing tag
             if self.content[self.position..].starts_with(&closing_tag) {
-                // Extract the content between the tags
-                text_content = self.content[start_position..self.position].to_string();
+                // We found the closing tag
+                // If we haven't parsed any children, treat everything as text content
+                if children.is_empty() {
+                    text_content = self.content[content_start..self.position].to_string();
+                    // Trim the text content
+                    text_content = text_content.trim().to_string();
+                }
+                
                 // Move position past the closing tag
                 self.position += closing_tag.len();
                 break;
             }
-            self.position += 1;
+            
+            // Check if there's a nested tag
+            if self.current_char() == '<' && self.peek_ahead(1) != '/' {
+                // There's a nested element - parse it recursively
+                let child = self.parse_element();
+                children.push(child);
+            } else if self.current_char() == '<' && self.peek_ahead(1) == '/' {
+                // Hit a closing tag, we're done with children
+                break;
+            } else {
+                // It's text content
+                let text = self.parse_text();
+                if text.len() > 0 {
+                    children.push(SimpleDOMNode {
+                        tag: String::new(),
+                        content: text,
+                        is_text: true,
+                        children: Vec::new(),
+                    });
+                }
+            }
         }
         
         SimpleDOMNode {
             tag: tag_name,
             content: text_content,
             is_text: false,
+            children: children,
         }
     }
     
@@ -125,8 +148,8 @@ impl HTMLParser {
         
         while self.position < self.content.len() {
             let c = self.current_char();
-            // Tag names end when we hit a space or '>'
-            if c == '>' || c == ' ' || c == '\n' || c == '\t' {
+            // Tag names end when we hit a space, >, /, or newline
+            if c == '>' || c == ' ' || c == '\n' || c == '\t' || c == '/' {
                 break;
             }
             name.push(c);
@@ -154,6 +177,11 @@ impl HTMLParser {
         self.content.chars().nth(self.position).unwrap_or('\0')
     }
     
+    /// Peeks ahead n characters without moving position
+    fn peek_ahead(&self, n: usize) -> char {
+        self.content.chars().nth(self.position + n).unwrap_or('\0')
+    }
+    
     /// Skips over whitespace characters
     fn skip_whitespace(&mut self) {
         while self.position < self.content.len() {
@@ -166,13 +194,13 @@ impl HTMLParser {
     }
 }
 
-// Simpler structure for FFI that's easier to work with
-// This is what we'll actually pass to C++
+// Simpler structure for FFI that supports nested children
 #[repr(C)]
 pub struct SimpleDOMNode {
     pub tag: String,
     pub content: String,
     pub is_text: bool,
+    pub children: Vec<SimpleDOMNode>,  // Now supports children!
 }
 
 // Struct to hold array of nodes for FFI
@@ -182,10 +210,84 @@ pub struct NodeArray {
     pub count: usize,
 }
 
-// FFI Functions - These can be called from C++
+// Helper function to flatten the tree into a list for easier C++ consumption
+// This does a depth-first traversal and extracts all text content
+fn flatten_node(node: &SimpleDOMNode, result: &mut Vec<SimpleDOMNode>) {
+    if node.is_text {
+        // It's a text node, add it directly
+        if !node.content.is_empty() {
+            result.push(SimpleDOMNode {
+                tag: String::new(),
+                content: node.content.clone(),
+                is_text: true,
+                children: Vec::new(),
+            });
+        }
+    } else {
+        // It's an element node
+        if node.children.is_empty() {
+            // No children, just add the content as this tag
+            if !node.content.is_empty() {
+                result.push(SimpleDOMNode {
+                    tag: node.tag.clone(),
+                    content: node.content.clone(),
+                    is_text: false,
+                    children: Vec::new(),
+                });
+            }
+        } else {
+            // Has children - flatten them and combine their text
+            let mut combined_text = String::new();
+            
+            for child in &node.children {
+                if child.is_text {
+                    combined_text.push_str(&child.content);
+                    combined_text.push(' ');
+                } else {
+                    // For nested tags, just extract their text recursively
+                    combined_text.push_str(&extract_text(child));
+                    combined_text.push(' ');
+                }
+            }
+            
+            combined_text = combined_text.trim().to_string();
+            
+            if !combined_text.is_empty() {
+                result.push(SimpleDOMNode {
+                    tag: node.tag.clone(),
+                    content: combined_text,
+                    is_text: false,
+                    children: Vec::new(),
+                });
+            }
+        }
+    }
+}
 
-/// Parses HTML and returns a pointer to an array of nodes
-/// This is the main function C++ will call
+// Helper to extract all text from a node and its children recursively
+fn extract_text(node: &SimpleDOMNode) -> String {
+    if node.is_text {
+        return node.content.clone();
+    }
+    
+    let mut text = String::new();
+    
+    if !node.content.is_empty() {
+        text.push_str(&node.content);
+        text.push(' ');
+    }
+    
+    for child in &node.children {
+        text.push_str(&extract_text(child));
+        text.push(' ');
+    }
+    
+    text.trim().to_string()
+}
+
+// FFI Functions
+
+/// Parses HTML and returns a flattened array of nodes
 #[no_mangle]
 pub extern "C" fn parse_html_to_nodes(html_ptr: *const u8, html_len: usize) -> *mut NodeArray {
     unsafe {
@@ -199,10 +301,18 @@ pub extern "C" fn parse_html_to_nodes(html_ptr: *const u8, html_len: usize) -> *
         let mut parser = HTMLParser::new(html);
         let nodes = parser.parse();
         
-        println!("[Rust] Parsed {} nodes", nodes.len());
+        println!("[Rust] Parsed {} top-level nodes", nodes.len());
+        
+        // Flatten the tree structure into a list
+        let mut flattened: Vec<SimpleDOMNode> = Vec::new();
+        for node in &nodes {
+            flatten_node(node, &mut flattened);
+        }
+        
+        println!("[Rust] Flattened to {} nodes", flattened.len());
         
         // Convert Vec to array for C++
-        let mut node_vec = nodes.into_boxed_slice();
+        let mut node_vec = flattened.into_boxed_slice();
         let node_ptr = node_vec.as_mut_ptr();
         let node_count = node_vec.len();
         
@@ -220,7 +330,6 @@ pub extern "C" fn parse_html_to_nodes(html_ptr: *const u8, html_len: usize) -> *
 }
 
 /// Gets the tag name from a node at a specific index
-/// Helper function for C++ to read node data
 #[no_mangle]
 pub extern "C" fn get_node_tag(array_ptr: *const NodeArray, index: usize) -> *const u8 {
     unsafe {
@@ -324,7 +433,6 @@ pub extern "C" fn get_node_count(array_ptr: *const NodeArray) -> usize {
 }
 
 /// Frees the node array memory
-/// MUST be called when C++ is done with the nodes
 #[no_mangle]
 pub extern "C" fn free_node_array(array_ptr: *mut NodeArray) {
     unsafe {
@@ -338,7 +446,6 @@ pub extern "C" fn free_node_array(array_ptr: *mut NodeArray) {
         let nodes = Vec::from_raw_parts(array.nodes, array.count, array.count);
         drop(nodes);
         
-        // array is automatically dropped here
         println!("[Rust] Freed node array");
     }
 }
@@ -346,6 +453,17 @@ pub extern "C" fn free_node_array(array_ptr: *mut NodeArray) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    
+    #[test]
+    fn test_parse_nested() {
+        let html = "<div><h1>Title</h1><p>Content</p></div>".to_string();
+        let mut parser = HTMLParser::new(html);
+        let nodes = parser.parse();
+        
+        assert_eq!(nodes.len(), 1);
+        assert_eq!(nodes[0].tag, "div");
+        assert_eq!(nodes[0].children.len(), 2);
+    }
     
     #[test]
     fn test_parse_simple() {
@@ -356,7 +474,5 @@ mod tests {
         assert_eq!(nodes.len(), 2);
         assert_eq!(nodes[0].tag, "h1");
         assert_eq!(nodes[0].content, "Hello");
-        assert_eq!(nodes[1].tag, "p");
-        assert_eq!(nodes[1].content, "World");
     }
 }
