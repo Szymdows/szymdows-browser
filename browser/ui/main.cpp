@@ -47,12 +47,21 @@ void BrowserWindow::initialize_tag_styles() {
     // h3 - Tertiary heading
     tag_styles["h3"] = {1.3, PANGO_WEIGHT_BOLD, "#1a1a1a", 10, 6};
     
+    // h4 - Fourth level heading
+    tag_styles["h4"] = {1.2, PANGO_WEIGHT_BOLD, "#2a2a2a", 8, 5};
+    
+    // h5 - Fifth level heading
+    tag_styles["h5"] = {1.1, PANGO_WEIGHT_BOLD, "#2a2a2a", 6, 4};
+    
+    // h6 - Sixth level heading (smallest heading)
+    tag_styles["h6"] = {1.0, PANGO_WEIGHT_BOLD, "#2a2a2a", 5, 3};
+    
     // p - Normal paragraph text
     tag_styles["p"] = {1.0, PANGO_WEIGHT_NORMAL, "#333333", 0, 12};
     
     // You can easily add more tags here:
-    // tag_styles["h4"] = {1.2, PANGO_WEIGHT_BOLD, "#1a1a1a", 8, 5};
     // tag_styles["blockquote"] = {1.0, PANGO_WEIGHT_NORMAL, "#666666", 5, 5};
+    // tag_styles["code"] = {0.9, PANGO_WEIGHT_NORMAL, "#d73a49", 0, 0};
     // etc.
     
     cout << "Initialized " << tag_styles.size() << " tag styles" << endl;
@@ -312,16 +321,20 @@ int main(int argc, char* argv[]) {
     
     // Default test HTML to display if no file is provided
     // This helps with testing during development
-    // Now includes h2 and h3 tags to test the new map-based system!
+    // Now includes all heading levels to test the map-based system!
     string html_content = 
         "<h1>Welcome to Szymdows Browser</h1>"
         "<p>This is a simple web browser built from scratch using C++ and Rust.</p>"
-        "<h2>Improved Rendering System</h2>"
+        "<h2>Heading Level 2</h2>"
         "<p>The browser now uses a map-based tag rendering system instead of if/else chains. This makes it much easier to add new tags!</p>"
-        "<h3>How It Works</h3>"
-        "<p>Each tag has a TagStyle structure that defines its appearance. The renderer just looks up the tag in a map and applies the style. No more long if/else statements!</p>"
-        "<h2>Adding New Tags</h2>"
-        "<p>To add a new tag, just add one line to the tag_styles map in initialize_tag_styles(). That's it!</p>";
+        "<h3>Heading Level 3</h3>"
+        "<p>Each tag has a TagStyle structure that defines its appearance. The renderer just looks up the tag in a map and applies the style.</p>"
+        "<h4>Heading Level 4</h4>"
+        "<p>No more long if/else statements! Adding a new tag is just adding one line to the map.</p>"
+        "<h5>Heading Level 5</h5>"
+        "<p>We now support all six HTML heading levels (h1 through h6) plus paragraph tags.</p>"
+        "<h6>Heading Level 6</h6>"
+        "<p>Each heading level gets progressively smaller, just like in real HTML!</p>";
     
     // Check if the user provided an HTML file as a command line argument
     if (argc > 1) {
