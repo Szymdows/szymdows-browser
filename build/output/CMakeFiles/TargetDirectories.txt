@@ -1,8 +1,0 @@
-/home/mrmon/szymdows-browser/build/output/CMakeFiles/edit_cache.dir
-/home/mrmon/szymdows-browser/build/output/CMakeFiles/rebuild_cache.dir
-/home/mrmon/szymdows-browser/build/output/engine/renderer/CMakeFiles/renderer.dir
-/home/mrmon/szymdows-browser/build/output/engine/renderer/CMakeFiles/edit_cache.dir
-/home/mrmon/szymdows-browser/build/output/engine/renderer/CMakeFiles/rebuild_cache.dir
-/home/mrmon/szymdows-browser/build/output/browser/CMakeFiles/SzymdowsBrowser.dir
-/home/mrmon/szymdows-browser/build/output/browser/CMakeFiles/edit_cache.dir
-/home/mrmon/szymdows-browser/build/output/browser/CMakeFiles/rebuild_cache.dir
