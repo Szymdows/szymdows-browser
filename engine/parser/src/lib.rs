@@ -1,27 +1,29 @@
 // HTML Parser Module for Szymdows Web Engine
 // This module is responsible for parsing HTML strings into a DOM tree structure
-// It's still pretty basic but I'm working on improving it
+// This parser will be called from C++ via FFI (Foreign Function Interface)
 
 use std::collections::HashMap;
 
 /// Represents the different types of nodes in the DOM tree
 /// Currently only supporting Element and Text nodes
-/// TODO: Add support for Comment nodes and other node types
 #[derive(Debug, Clone)]
+#[repr(C)]
 pub enum NodeType {
-    Element,
-    Text,
+    Element = 0,
+    Text = 1,
 }
 
 /// This structure represents a single node in the DOM tree
 /// Each node can have a tag name (for elements), text content, children, and attributes
+/// This is designed to be passed across the FFI boundary to C++
 #[derive(Debug, Clone)]
+#[repr(C)]
 pub struct DOMNode {
     pub node_type: NodeType,
-    pub tag_name: Option<String>,
-    pub text_content: Option<String>,
-    pub children: Vec<DOMNode>,
-    pub attributes: HashMap<String, String>,
+    pub tag_name: *mut std::os::raw::c_char,  // C-compatible string pointer
+    pub text_content: *mut std::os::raw::c_char,  // C-compatible string pointer
+    pub children_count: usize,
+    pub children: *mut DOMNode,  // Pointer to array of children
 }
 
 /// The main HTML Parser structure
@@ -33,12 +35,6 @@ pub struct HTMLParser {
 
 impl HTMLParser {
     /// Creates a new HTMLParser instance with the given HTML content
-    /// 
-    /// # Arguments
-    /// * `html` - A String containing the HTML to parse
-    /// 
-    /// # Returns
-    /// A new HTMLParser ready to parse the content
     pub fn new(html: String) -> HTMLParser {
         HTMLParser {
             content: html,
@@ -47,12 +43,8 @@ impl HTMLParser {
     }
     
     /// Parses the HTML content and returns a vector of DOM nodes
-    /// This is the main entry point for parsing
-    /// 
-    /// # Returns
-    /// A Vec<DOMNode> containing all the parsed nodes
-    pub fn parse(&mut self) -> Vec<DOMNode> {
-        let mut nodes: Vec<DOMNode> = Vec::new();
+    pub fn parse(&mut self) -> Vec<SimpleDOMNode> {
+        let mut nodes: Vec<SimpleDOMNode> = Vec::new();
         
         // Loop through the entire HTML content
         while self.position < self.content.len() {
@@ -74,12 +66,10 @@ impl HTMLParser {
                 let text = self.parse_text();
                 // Only add text nodes if they're not empty
                 if text.len() > 0 {
-                    nodes.push(DOMNode {
-                        node_type: NodeType::Text,
-                        tag_name: None,
-                        text_content: Some(text),
-                        children: Vec::new(),
-                        attributes: HashMap::new(),
+                    nodes.push(SimpleDOMNode {
+                        tag: String::new(),
+                        content: text,
+                        is_text: true,
                     });
                 }
             }
@@ -89,11 +79,7 @@ impl HTMLParser {
     }
     
     /// Parses an HTML element (a tag and its contents)
-    /// This handles opening tags, content, and closing tags
-    /// 
-    /// # Returns
-    /// A DOMNode representing the parsed element
-    fn parse_element(&mut self) -> DOMNode {
+    fn parse_element(&mut self) -> SimpleDOMNode {
         // Move past the opening '<' character
         self.position += 1;
         
@@ -101,7 +87,6 @@ impl HTMLParser {
         let tag_name = self.parse_tag_name();
         
         // Skip past any attributes and the closing '>' of the opening tag
-        // TODO: Actually parse attributes instead of just skipping them
         while self.position < self.content.len() && self.current_char() != '>' {
             self.position += 1;
         }
@@ -127,23 +112,14 @@ impl HTMLParser {
             self.position += 1;
         }
         
-        // Create and return the DOM node
-        // Note: children vec is empty because we don't handle nested tags yet
-        // That's something I need to implement next
-        DOMNode {
-            node_type: NodeType::Element,
-            tag_name: Some(tag_name),
-            text_content: Some(text_content),
-            children: Vec::new(),
-            attributes: HashMap::new(),
+        SimpleDOMNode {
+            tag: tag_name,
+            content: text_content,
+            is_text: false,
         }
     }
     
     /// Parses a tag name from the current position
-    /// Continues until it hits a space or '>' character
-    /// 
-    /// # Returns
-    /// A String containing the tag name
     fn parse_tag_name(&mut self) -> String {
         let mut name = String::new();
         
@@ -161,10 +137,6 @@ impl HTMLParser {
     }
     
     /// Parses text content (anything that's not a tag)
-    /// Continues until it encounters a '<' character
-    /// 
-    /// # Returns
-    /// A String containing the text content, trimmed of whitespace
     fn parse_text(&mut self) -> String {
         let mut text = String::new();
         
@@ -178,16 +150,11 @@ impl HTMLParser {
     }
     
     /// Gets the character at the current position
-    /// Returns null character '\0' if position is out of bounds
-    /// 
-    /// # Returns
-    /// The character at the current position
     fn current_char(&self) -> char {
         self.content.chars().nth(self.position).unwrap_or('\0')
     }
     
-    /// Skips over whitespace characters (spaces, newlines, tabs, etc.)
-    /// Advances the position until a non-whitespace character is found
+    /// Skips over whitespace characters
     fn skip_whitespace(&mut self) {
         while self.position < self.content.len() {
             let c = self.current_char();
@@ -199,72 +166,197 @@ impl HTMLParser {
     }
 }
 
-// Unit tests for the parser
-// These help make sure the parsing logic works correctly
+// Simpler structure for FFI that's easier to work with
+// This is what we'll actually pass to C++
+#[repr(C)]
+pub struct SimpleDOMNode {
+    pub tag: String,
+    pub content: String,
+    pub is_text: bool,
+}
+
+// Struct to hold array of nodes for FFI
+#[repr(C)]
+pub struct NodeArray {
+    pub nodes: *mut SimpleDOMNode,
+    pub count: usize,
+}
+
+// FFI Functions - These can be called from C++
+
+/// Parses HTML and returns a pointer to an array of nodes
+/// This is the main function C++ will call
+#[no_mangle]
+pub extern "C" fn parse_html_to_nodes(html_ptr: *const u8, html_len: usize) -> *mut NodeArray {
+    unsafe {
+        // Convert C string to Rust String
+        let html_bytes = std::slice::from_raw_parts(html_ptr, html_len);
+        let html = String::from_utf8_lossy(html_bytes).to_string();
+        
+        println!("[Rust] Parsing HTML of length: {}", html.len());
+        
+        // Create parser and parse
+        let mut parser = HTMLParser::new(html);
+        let nodes = parser.parse();
+        
+        println!("[Rust] Parsed {} nodes", nodes.len());
+        
+        // Convert Vec to array for C++
+        let mut node_vec = nodes.into_boxed_slice();
+        let node_ptr = node_vec.as_mut_ptr();
+        let node_count = node_vec.len();
+        
+        // Prevent Rust from freeing the memory
+        std::mem::forget(node_vec);
+        
+        // Create NodeArray struct
+        let array = Box::new(NodeArray {
+            nodes: node_ptr,
+            count: node_count,
+        });
+        
+        Box::into_raw(array)
+    }
+}
+
+/// Gets the tag name from a node at a specific index
+/// Helper function for C++ to read node data
+#[no_mangle]
+pub extern "C" fn get_node_tag(array_ptr: *const NodeArray, index: usize) -> *const u8 {
+    unsafe {
+        if array_ptr.is_null() {
+            return std::ptr::null();
+        }
+        
+        let array = &*array_ptr;
+        if index >= array.count {
+            return std::ptr::null();
+        }
+        
+        let node = &*array.nodes.add(index);
+        node.tag.as_ptr()
+    }
+}
+
+/// Gets the tag name length
+#[no_mangle]
+pub extern "C" fn get_node_tag_len(array_ptr: *const NodeArray, index: usize) -> usize {
+    unsafe {
+        if array_ptr.is_null() {
+            return 0;
+        }
+        
+        let array = &*array_ptr;
+        if index >= array.count {
+            return 0;
+        }
+        
+        let node = &*array.nodes.add(index);
+        node.tag.len()
+    }
+}
+
+/// Gets the content from a node at a specific index
+#[no_mangle]
+pub extern "C" fn get_node_content(array_ptr: *const NodeArray, index: usize) -> *const u8 {
+    unsafe {
+        if array_ptr.is_null() {
+            return std::ptr::null();
+        }
+        
+        let array = &*array_ptr;
+        if index >= array.count {
+            return std::ptr::null();
+        }
+        
+        let node = &*array.nodes.add(index);
+        node.content.as_ptr()
+    }
+}
+
+/// Gets the content length
+#[no_mangle]
+pub extern "C" fn get_node_content_len(array_ptr: *const NodeArray, index: usize) -> usize {
+    unsafe {
+        if array_ptr.is_null() {
+            return 0;
+        }
+        
+        let array = &*array_ptr;
+        if index >= array.count {
+            return 0;
+        }
+        
+        let node = &*array.nodes.add(index);
+        node.content.len()
+    }
+}
+
+/// Gets whether the node is a text node
+#[no_mangle]
+pub extern "C" fn get_node_is_text(array_ptr: *const NodeArray, index: usize) -> bool {
+    unsafe {
+        if array_ptr.is_null() {
+            return false;
+        }
+        
+        let array = &*array_ptr;
+        if index >= array.count {
+            return false;
+        }
+        
+        let node = &*array.nodes.add(index);
+        node.is_text
+    }
+}
+
+/// Gets the total number of nodes
+#[no_mangle]
+pub extern "C" fn get_node_count(array_ptr: *const NodeArray) -> usize {
+    unsafe {
+        if array_ptr.is_null() {
+            return 0;
+        }
+        
+        let array = &*array_ptr;
+        array.count
+    }
+}
+
+/// Frees the node array memory
+/// MUST be called when C++ is done with the nodes
+#[no_mangle]
+pub extern "C" fn free_node_array(array_ptr: *mut NodeArray) {
+    unsafe {
+        if array_ptr.is_null() {
+            return;
+        }
+        
+        let array = Box::from_raw(array_ptr);
+        
+        // Reconstruct the Vec to properly free it
+        let nodes = Vec::from_raw_parts(array.nodes, array.count, array.count);
+        drop(nodes);
+        
+        // array is automatically dropped here
+        println!("[Rust] Freed node array");
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     
     #[test]
-    fn test_parse_simple_h1() {
-        let html = "<h1>Hello World</h1>".to_string();
-        let mut parser = HTMLParser::new(html);
-        let nodes = parser.parse();
-        
-        assert_eq!(nodes.len(), 1);
-        // TODO: Add more detailed assertions here
-    }
-    
-    #[test]
-    fn test_parse_multiple_tags() {
-        let html = "<h1>Title</h1><p>Paragraph</p>".to_string();
+    fn test_parse_simple() {
+        let html = "<h1>Hello</h1><p>World</p>".to_string();
         let mut parser = HTMLParser::new(html);
         let nodes = parser.parse();
         
         assert_eq!(nodes.len(), 2);
-    }
-}
-
-// Foreign Function Interface (FFI) functions
-// These allow the C++ code to call into this Rust code
-// I'm not actually using these yet but they're here for when I integrate everything
-
-/// Parses HTML from a C-style string pointer
-/// This is called from C++ code
-/// 
-/// # Safety
-/// This function is unsafe because it deals with raw pointers from C++
-/// The caller must ensure the pointer is valid and the length is correct
-#[no_mangle]
-pub extern "C" fn parse_html(html_ptr: *const u8, len: usize) -> *mut Vec<DOMNode> {
-    unsafe {
-        // Convert the C pointer to a Rust slice
-        let html_bytes = std::slice::from_raw_parts(html_ptr, len);
-        // Convert bytes to a String
-        let html = String::from_utf8_lossy(html_bytes).to_string();
-        
-        // Create parser and parse the HTML
-        let mut parser = HTMLParser::new(html);
-        let nodes = parser.parse();
-        
-        // Return a pointer to the nodes that C++ can use
-        Box::into_raw(Box::new(nodes))
-    }
-}
-
-/// Frees the memory allocated for nodes
-/// This must be called from C++ when done with the nodes to prevent memory leaks
-/// 
-/// # Safety
-/// This function is unsafe because it deals with raw pointers
-/// The caller must ensure the pointer was created by parse_html and hasn't been freed already
-#[no_mangle]
-pub extern "C" fn free_nodes(nodes_ptr: *mut Vec<DOMNode>) {
-    unsafe {
-        if !nodes_ptr.is_null() {
-            // Convert the pointer back to a Box and drop it
-            // This frees the memory
-            Box::from_raw(nodes_ptr);
-        }
+        assert_eq!(nodes[0].tag, "h1");
+        assert_eq!(nodes[0].content, "Hello");
+        assert_eq!(nodes[1].tag, "p");
+        assert_eq!(nodes[1].content, "World");
     }
 }

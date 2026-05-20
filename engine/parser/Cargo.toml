@@ -1,12 +1,10 @@
 [package]
 name = "html_parser"
-version = "0.1.0"
+version = "0.1.2"
 edition = "2021"
-authors = ["Szymdows"]
 
 [lib]
+# This tells Rust to build both a Rust library and a C-compatible library
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-# Currently no external dependencies
-# Trying to implement everything myself for learning purposes

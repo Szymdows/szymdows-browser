@@ -6,21 +6,18 @@
 #include <map>
 #include <gtk/gtk.h>
 #include "window.h"
+#include "../../engine/parser/parser_ffi.h"  // Include Rust FFI header
 
 using namespace std;
 
 // Browser Window Implementation with GTK
-// This file contains all the code for creating and managing the browser window
-// Now uses a map-based system for tag rendering instead of if/else chains
+// Now uses the Rust parser via FFI instead of parsing HTML in C++!
 
-// Constructor - This initializes the browser window with default values
 BrowserWindow::BrowserWindow() {
     width = 800;
     height = 600;
     title = "Szymdows Browser";
     
-    // Initialize GTK widgets to NULL
-    // They'll be created later in setup_ui()
     window = NULL;
     scrolled_window = NULL;
     text_view = NULL;
@@ -29,48 +26,23 @@ BrowserWindow::BrowserWindow() {
     cout << "Browser window created" << endl;
 }
 
-// Destructor - This cleans up resources when the window is closed
 BrowserWindow::~BrowserWindow() {
     cout << "Browser window destroyed" << endl;
-    // GTK handles cleanup of widgets automatically so we don't need to do much here
 }
 
-// This initializes the tag styles map with all supported HTML tags
-// Adding a new tag is just adding one line here - much easier than if/else chains
 void BrowserWindow::initialize_tag_styles() {
-    // h1 - Main heading, large and bold
     tag_styles["h1"] = {2.0, PANGO_WEIGHT_BOLD, "#000000", 15, 10};
-    
-    // h2 - Secondary heading, slightly smaller than h1
     tag_styles["h2"] = {1.5, PANGO_WEIGHT_BOLD, "#1a1a1a", 12, 8};
-    
-    // h3 - Tertiary heading
     tag_styles["h3"] = {1.3, PANGO_WEIGHT_BOLD, "#1a1a1a", 10, 6};
-    
-    // h4 - Fourth level heading
     tag_styles["h4"] = {1.2, PANGO_WEIGHT_BOLD, "#2a2a2a", 8, 5};
-    
-    // h5 - Fifth level heading
     tag_styles["h5"] = {1.1, PANGO_WEIGHT_BOLD, "#2a2a2a", 6, 4};
-    
-    // h6 - Sixth level heading (smallest heading)
     tag_styles["h6"] = {1.0, PANGO_WEIGHT_BOLD, "#2a2a2a", 5, 3};
-    
-    // p - Normal paragraph text
     tag_styles["p"] = {1.0, PANGO_WEIGHT_NORMAL, "#333333", 0, 12};
-    
-    // You can easily add more tags here:
-    // tag_styles["blockquote"] = {1.0, PANGO_WEIGHT_NORMAL, "#666666", 5, 5};
-    // tag_styles["code"] = {0.9, PANGO_WEIGHT_NORMAL, "#d73a49", 0, 0};
-    // etc.
     
     cout << "Initialized " << tag_styles.size() << " tag styles" << endl;
 }
 
-// This creates a GTK text tag with the specified style properties
-// It takes the style information and creates a GTK tag that can be applied to text
 void BrowserWindow::create_text_tag(const string& tag_name, const TagStyle& style) {
-    // Create a GTK text tag with all the style properties
     gtk_text_buffer_create_tag(text_buffer, tag_name.c_str(),
                               "weight", style.weight,
                               "scale", style.scale,
@@ -80,48 +52,32 @@ void BrowserWindow::create_text_tag(const string& tag_name, const TagStyle& styl
                               NULL);
 }
 
-// This sets up all the GTK user interface widgets
-// It creates the window, text view, scrolling, and applies styling
 void BrowserWindow::setup_ui() {
-    // Create the main window
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(window), title.c_str());
     gtk_window_set_default_size(GTK_WINDOW(window), width, height);
     
-    // Connect the destroy signal to quit the application
-    // This makes the X button work to close the window
     g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
     
-    // Create a scrolled window so we can scroll if content is long
-    // This is important for pages with lots of content
     scrolled_window = gtk_scrolled_window_new(NULL, NULL);
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled_window),
                                    GTK_POLICY_AUTOMATIC,
                                    GTK_POLICY_AUTOMATIC);
     
-    // Create a text view widget to display the rendered content
     text_view = gtk_text_view_new();
-    gtk_text_view_set_editable(GTK_TEXT_VIEW(text_view), FALSE);  // Make it read-only
-    gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(text_view), FALSE);  // Hide cursor
-    gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(text_view), GTK_WRAP_WORD);  // Wrap long lines
+    gtk_text_view_set_editable(GTK_TEXT_VIEW(text_view), FALSE);
+    gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(text_view), FALSE);
+    gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(text_view), GTK_WRAP_WORD);
     
-    // Set some padding so text doesn't touch the edges
-    // This makes it look nicer and easier to read
     gtk_text_view_set_left_margin(GTK_TEXT_VIEW(text_view), 20);
     gtk_text_view_set_right_margin(GTK_TEXT_VIEW(text_view), 20);
     gtk_text_view_set_top_margin(GTK_TEXT_VIEW(text_view), 20);
     gtk_text_view_set_bottom_margin(GTK_TEXT_VIEW(text_view), 20);
     
-    // Get the text buffer from the text view
-    // The buffer is where we actually store and format the text
     text_buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(text_view));
     
-    // Initialize the tag styles map
-    // This sets up all the styling information for different HTML tags
     initialize_tag_styles();
     
-    // Create GTK text tags for each style in the map
-    // This is way better than manually creating each tag with if/else statements
     for (auto& pair : tag_styles) {
         const string& tag_name = pair.first;
         const TagStyle& style = pair.second;
@@ -129,14 +85,9 @@ void BrowserWindow::setup_ui() {
         cout << "Created text tag for: " << tag_name << endl;
     }
     
-    // Add the text view to the scrolled window
     gtk_container_add(GTK_CONTAINER(scrolled_window), text_view);
-    
-    // Add the scrolled window to the main window
     gtk_container_add(GTK_CONTAINER(window), scrolled_window);
     
-    // Style the text view with CSS to make it look nice
-    // This sets the background to white and chooses a good font
     GtkCssProvider* css_provider = gtk_css_provider_new();
     const gchar* css_data = "textview { background-color: white; font-family: 'Sans'; font-size: 14px; }";
     gtk_css_provider_load_from_data(css_provider, css_data, -1, NULL);
@@ -149,202 +100,135 @@ void BrowserWindow::setup_ui() {
     cout << "UI setup complete" << endl;
 }
 
-// This parses simple HTML into elements
-// It's a basic parser that finds tags and their content
-// TODO: This should probably use the Rust parser eventually but this works for now
-vector<HTMLElement> BrowserWindow::parse_html(const string& html) {
-    vector<HTMLElement> elements;
-    
-    size_t pos = 0;
-    
-    // Loop through the entire HTML string
-    while (pos < html.length()) {
-        // Find the next opening tag (starts with <)
-        size_t tag_start = html.find('<', pos);
-        if (tag_start == string::npos) {
-            // No more tags found
-            break;
-        }
-        
-        // Find the closing bracket of the tag
-        size_t tag_end = html.find('>', tag_start);
-        if (tag_end == string::npos) {
-            // Malformed HTML - missing closing bracket
-            break;
-        }
-        
-        // Extract the tag name (everything between < and >)
-        string tag = html.substr(tag_start + 1, tag_end - tag_start - 1);
-        
-        // Build the closing tag string we need to find
-        string closing_tag = "</" + tag + ">";
-        
-        // Find where the closing tag is
-        size_t content_end = html.find(closing_tag, tag_end);
-        
-        if (content_end != string::npos) {
-            // Extract the content between opening and closing tags
-            string content = html.substr(tag_end + 1, content_end - tag_end - 1);
-            
-            // Create an HTMLElement structure to store this
-            HTMLElement elem;
-            elem.tag = tag;
-            elem.content = content;
-            elements.push_back(elem);
-            
-            // Move position past the closing tag so we can find the next one
-            pos = content_end + closing_tag.length();
-        } else {
-            // No closing tag found, skip past this tag
-            pos = tag_end + 1;
-        }
-    }
-    
-    return elements;
-}
-
-// This renders HTML by inserting text with proper formatting tags
-// It parses the HTML and applies different styles to different elements
-// Now uses a map lookup instead of if/else chains - much faster and cleaner!
+// This now uses the Rust parser via FFI instead of parsing in C++!
 void BrowserWindow::render_html(const string& html) {
-    // Make sure we have a text buffer to work with
     if (!text_buffer) {
         cout << "ERROR: text_buffer is NULL!" << endl;
         return;
     }
     
-    cout << "render_html called with HTML length: " << html.length() << endl;
+    cout << "[C++] render_html called with HTML length: " << html.length() << endl;
     
-    // Clear any existing content in the buffer
     gtk_text_buffer_set_text(text_buffer, "", -1);
     
-    // Parse the HTML into individual elements
-    vector<HTMLElement> elements = parse_html(html);
+    // Call the Rust parser via FFI!
+    cout << "[C++] Calling Rust parser..." << endl;
+    NodeArray* node_array = parse_html_to_nodes(
+        reinterpret_cast<const uint8_t*>(html.c_str()),
+        html.length()
+    );
     
-    cout << "Parsed " << elements.size() << " HTML elements" << endl;
-    
-    // Debug: print what we parsed
-    for (size_t i = 0; i < elements.size(); i++) {
-        cout << "Element " << i << ": tag=" << elements[i].tag 
-             << ", content=" << elements[i].content << endl;
+    if (node_array == nullptr) {
+        cout << "[C++] ERROR: Rust parser returned NULL!" << endl;
+        return;
     }
     
-    // Iterator for inserting text into the buffer
+    // Get the number of nodes from Rust
+    size_t node_count = get_node_count(node_array);
+    cout << "[C++] Received " << node_count << " nodes from Rust parser" << endl;
+    
+    // Iterate through all the nodes
     GtkTextIter iter;
     
-    // Insert each element with appropriate formatting
-    // This is the improved version using map lookup instead of if/else
-    for (size_t i = 0; i < elements.size(); i++) {
-        const HTMLElement& elem = elements[i];
+    for (size_t i = 0; i < node_count; i++) {
+        // Get tag name from Rust
+        const uint8_t* tag_ptr = get_node_tag(node_array, i);
+        size_t tag_len = get_node_tag_len(node_array, i);
+        string tag(reinterpret_cast<const char*>(tag_ptr), tag_len);
         
-        cout << "Rendering element: " << elem.tag << endl;
+        // Get content from Rust
+        const uint8_t* content_ptr = get_node_content(node_array, i);
+        size_t content_len = get_node_content_len(node_array, i);
+        string content(reinterpret_cast<const char*>(content_ptr), content_len);
         
-        // Get the end iterator (where we'll insert the next text)
+        bool is_text = get_node_is_text(node_array, i);
+        
+        cout << "[C++] Node " << i << ": tag='" << tag << "', content='" << content 
+             << "', is_text=" << is_text << endl;
+        
         gtk_text_buffer_get_end_iter(text_buffer, &iter);
         
-        // Look up the tag in our styles map
-        // This is O(log n) lookup instead of checking each if condition
-        auto style_it = tag_styles.find(elem.tag);
-        
-        if (style_it != tag_styles.end()) {
-            // We found a style for this tag! Apply it
-            cout << "Inserting " << elem.tag << ": " << elem.content << endl;
+        if (!is_text && !tag.empty()) {
+            // It's an element node
+            auto style_it = tag_styles.find(tag);
             
-            gtk_text_buffer_insert_with_tags_by_name(text_buffer, &iter,
-                                                     elem.content.c_str(), -1,
-                                                     elem.tag.c_str(), NULL);
+            if (style_it != tag_styles.end()) {
+                cout << "[C++] Rendering " << tag << " with styling" << endl;
+                gtk_text_buffer_insert_with_tags_by_name(text_buffer, &iter,
+                                                         content.c_str(), -1,
+                                                         tag.c_str(), NULL);
+            } else {
+                cout << "[C++] Unknown tag '" << tag << "', rendering as plain text" << endl;
+                gtk_text_buffer_insert(text_buffer, &iter, content.c_str(), -1);
+            }
             
-            // Add newline after element for spacing
             gtk_text_buffer_get_end_iter(text_buffer, &iter);
             gtk_text_buffer_insert(text_buffer, &iter, "\n", -1);
-        } else {
-            // Unknown tag - just render as plain text
-            // This way we don't crash if there's a tag we don't recognize yet
-            cout << "Unknown tag '" << elem.tag << "', rendering as plain text" << endl;
-            gtk_text_buffer_insert(text_buffer, &iter, elem.content.c_str(), -1);
-            gtk_text_buffer_get_end_iter(text_buffer, &iter);
-            gtk_text_buffer_insert(text_buffer, &iter, "\n", -1);
+        } else if (is_text && !content.empty()) {
+            // It's a text node
+            gtk_text_buffer_insert(text_buffer, &iter, content.c_str(), -1);
         }
     }
     
-    cout << "Finished rendering HTML" << endl;
+    // IMPORTANT: Free the memory allocated by Rust!
+    cout << "[C++] Freeing Rust node array..." << endl;
+    free_node_array(node_array);
+    
+    cout << "[C++] Finished rendering HTML" << endl;
 }
 
-// This shows the window to the user
 void BrowserWindow::show() {
     if (window) {
-        // Show all widgets in the window
         gtk_widget_show_all(window);
         cout << "Window displayed" << endl;
     }
 }
 
-// This sets the HTML content and renders it
 void BrowserWindow::set_html(const string& html) {
-    // Call the render function to parse and display the HTML
     render_html(html);
 }
 
-// This sets the window title
 void BrowserWindow::set_title(const string& t) {
     title = t;
     
-    // If window already exists, update its title
     if (window) {
         gtk_window_set_title(GTK_WINDOW(window), title.c_str());
     }
 }
 
-// This is the main event loop for the browser window
-// It just starts the GTK main loop
 void BrowserWindow::run() {
     cout << "Starting GTK main loop..." << endl;
     cout << "Window is now open. Close the window to exit." << endl;
     
-    // Start the GTK main loop
-    // This function blocks until the window is closed
-    // It handles all the events like mouse clicks, keyboard input, etc.
     gtk_main();
     
     cout << "GTK main loop ended" << endl;
 }
 
-// Main function - This is the entry point for the browser application
 int main(int argc, char* argv[]) {
     cout << "Starting Szymdows Browser..." << endl;
+    cout << "Now using Rust parser via FFI!" << endl;
     cout << endl;
     
-    // Initialize GTK
-    // This must be called before using any GTK functions
     gtk_init(&argc, &argv);
     cout << "GTK initialized" << endl;
     
-    // Default test HTML to display if no file is provided
-    // This helps with testing during development
-    // Now includes all heading levels to test the map-based system!
     string html_content = 
         "<h1>Welcome to Szymdows Browser</h1>"
-        "<p>This is a simple web browser built from scratch using C++ and Rust.</p>"
-        "<h2>Heading Level 2</h2>"
-        "<p>The browser now uses a map-based tag rendering system instead of if/else chains. This makes it much easier to add new tags!</p>"
-        "<h3>Heading Level 3</h3>"
-        "<p>Each tag has a TagStyle structure that defines its appearance. The renderer just looks up the tag in a map and applies the style.</p>"
-        "<h4>Heading Level 4</h4>"
-        "<p>No more long if/else statements! Adding a new tag is just adding one line to the map.</p>"
-        "<h5>Heading Level 5</h5>"
-        "<p>We now support all six HTML heading levels (h1 through h6) plus paragraph tags.</p>"
-        "<h6>Heading Level 6</h6>"
-        "<p>Each heading level gets progressively smaller, just like in real HTML!</p>";
+        "<p>This browser now uses the Rust HTML parser via FFI (Foreign Function Interface)!</p>"
+        "<h2>How it works</h2>"
+        "<p>The HTML is sent to Rust, parsed there, and the results are sent back to C++ for rendering.</p>"
+        "<h3>Architecture</h3>"
+        "<p>Rust handles parsing (memory safe), C++ handles rendering (GTK integration).</p>"
+        "<h4>This is proper browser architecture</h4>"
+        "<p>Just like Firefox uses both Rust and C++!</p>";
     
-    // Check if the user provided an HTML file as a command line argument
     if (argc > 1) {
         string filename = argv[1];
         cout << "Loading HTML file: " << filename << endl;
         
-        // Try to open and read the file
         ifstream file(filename);
         if (file.is_open()) {
-            // Read the entire file into a string
             stringstream buffer;
             buffer << file.rdbuf();
             html_content = buffer.str();
@@ -352,30 +236,24 @@ int main(int argc, char* argv[]) {
             
             cout << "File loaded successfully" << endl;
         } else {
-            // File couldn't be opened
             cerr << "Error: Could not open file '" << filename << "'" << endl;
             cerr << "Using default test content instead" << endl;
         }
         cout << endl;
     }
     
-    // Create the browser window
     cout << "Creating browser window..." << endl;
     BrowserWindow window;
     
-    // Set up the UI (this creates all the GTK widgets)
     cout << "Setting up user interface..." << endl;
     window.setup_ui();
     
-    // Parse and render the HTML content (do this AFTER UI setup)
-    cout << "Parsing and rendering HTML..." << endl;
+    cout << "Parsing and rendering HTML (using Rust parser)..." << endl;
     window.set_html(html_content);
     
-    // Show the window
     cout << "Showing window..." << endl;
     window.show();
     
-    // Run the browser event loop
     window.run();
     
     cout << endl;
