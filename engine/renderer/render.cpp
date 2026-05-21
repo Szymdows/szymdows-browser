@@ -13,7 +13,6 @@ Renderer::Renderer() {
     output = "";
     
     // Print initialization message for debugging
-    // TODO: Remove this debug output later
     std::cout << "Renderer initialized with dimensions: " 
               << window_width << "x" << window_height << std::endl;
 }
@@ -21,7 +20,7 @@ Renderer::Renderer() {
 // Destructor - This cleans up when the renderer is destroyed
 Renderer::~Renderer() {
     // Currently nothing to clean up
-    // If we allocate any dynamic memory in the future, it should be freed here
+    // If we allocate any dynamic memory in the future it should be freed here
 }
 
 // This is the main rendering function
@@ -41,7 +40,7 @@ void Renderer::render(const std::string& html) {
         // Find the next opening tag
         size_t tag_start = html.find('<', position);
         
-        // If no more tags found, we're done
+        // If no more tags found we're done
         if (tag_start == std::string::npos) {
             break;
         }
@@ -86,7 +85,6 @@ void Renderer::render(const std::string& html) {
 void Renderer::render_node(const std::string& tag, const std::string& content) {
     if (tag == "h1") {
         // Render h1 as a large heading with decorative borders
-        // Using equals signs to make it stand out
         output += "\n";
         output += "================================\n";
         output += "  " + content + "\n";

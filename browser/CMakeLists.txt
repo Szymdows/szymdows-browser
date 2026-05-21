@@ -4,13 +4,13 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
 find_package(CURL REQUIRED)
 
-# Find the Rust library
+# The FFI wrapper is in engine/parser and is now called html_parser_ffi
 set(RUST_LIB_DIR ${CMAKE_SOURCE_DIR}/engine/parser/target/release)
 
 if(WIN32)
-    set(RUST_LIB ${RUST_LIB_DIR}/html_parser.dll.lib)
+    set(RUST_LIB ${RUST_LIB_DIR}/html_parser_ffi.dll.lib)
 else()
-    set(RUST_LIB ${RUST_LIB_DIR}/libhtml_parser.so)
+    set(RUST_LIB ${RUST_LIB_DIR}/libhtml_parser_ffi.so)
 endif()
 
 add_executable(SzymdowsBrowser
@@ -21,7 +21,7 @@ target_link_libraries(SzymdowsBrowser
     renderer
     ${GTK3_LIBRARIES}
     ${RUST_LIB}
-    ${CURL_LIBRARIES}  # Add curl for HTTP requests
+    ${CURL_LIBRARIES}
 )
 
 target_include_directories(SzymdowsBrowser PRIVATE

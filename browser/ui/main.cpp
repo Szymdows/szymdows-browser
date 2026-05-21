@@ -571,15 +571,42 @@ int main(int argc, char* argv[]) {
     gtk_init(&argc, &argv);
     cout << "GTK initialized" << endl;
     
+    // Updated welcome page with proper HTML structure
     string html_content = 
+        "<html>"
+        "<body>"
         "<h1>Welcome to Szymdows Browser</h1>"
         "<p>You can now browse the real web!</p>"
         "<h2>Try It Out</h2>"
-        "<p>Type a URL like 'example.com' or search for something like 'Rust programming'</p>"
-        "<h3>Features</h3>"
+        "<p>Type a URL like example.com or search for something like rust programming</p>"
+        "<h2>Features</h2>"
         "<p>Back and forward buttons work with your browsing history</p>"
         "<p>Refresh button reloads the current page</p>"
-        "<p>Uses our Rust parser to parse real HTML from the internet!</p>";
+        "<p>Uses our Rust parser to parse real HTML from the internet!</p>"
+        "<h2>Architecture</h2>"
+        "<p>The browser now has a modular structure like Firefox</p>"
+        "<p>Separate modules for HTML tree, parser, tokenizer, and tree builder</p>"
+        "</body>"
+        "</html>";
+    
+    if (argc > 1) {
+        string filename = argv[1];
+        cout << "Loading HTML file: " << filename << endl;
+        
+        ifstream file(filename);
+        if (file.is_open()) {
+            stringstream buffer;
+            buffer << file.rdbuf();
+            html_content = buffer.str();
+            file.close();
+            
+            cout << "File loaded successfully" << endl;
+        } else {
+            cerr << "Error: Could not open file '" << filename << "'" << endl;
+            cerr << "Using default test content instead" << endl;
+        }
+        cout << endl;
+    }
     
     cout << "Creating browser window..." << endl;
     BrowserWindow window;
@@ -587,7 +614,7 @@ int main(int argc, char* argv[]) {
     cout << "Setting up user interface..." << endl;
     window.setup_ui();
     
-    cout << "Rendering welcome page..." << endl;
+    cout << "Parsing and rendering HTML (using Rust parser)..." << endl;
     window.set_html(html_content);
     
     cout << "Showing window..." << endl;

@@ -13,7 +13,6 @@ extern "C" {
 #endif
 
 // Opaque pointer to Rust's NodeArray structure
-// We don't need to know the internals, just hold a pointer to it
 typedef struct NodeArray NodeArray;
 
 // Parses HTML string and returns a pointer to the node array
@@ -41,7 +40,6 @@ size_t get_node_content_len(const NodeArray* array_ptr, size_t index);
 bool get_node_is_text(const NodeArray* array_ptr, size_t index);
 
 // Frees the node array memory
-// MUST be called when done with the nodes to prevent memory leaks
 void free_node_array(NodeArray* array_ptr);
 
 #ifdef __cplusplus

@@ -1,11 +1,10 @@
 [package]
-name = "html_parser_ffi"
+name = "layout"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["rlib"]
 
 [dependencies]
-html_parser = { path = "../html/parser" }
 html_tree = { path = "../html/tree" }

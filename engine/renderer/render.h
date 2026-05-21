@@ -9,12 +9,11 @@
 // The renderer takes parsed HTML and converts it into displayable output
 
 // Forward declaration of RenderNode
-// This is used for the internal representation of nodes during rendering
 class RenderNode;
 
 /// The main Renderer class
 /// This class is responsible for taking HTML content and rendering it
-/// Currently it just renders to text, but eventually it should render graphics
+/// Currently it just renders to text but eventually should render graphics
 class Renderer {
 public:
     // Constructor - initializes the renderer with default settings
@@ -65,7 +64,6 @@ private:
 
 /// Structure representing a node to be rendered
 /// This is a simplified version for the rendering pipeline
-/// TODO: Maybe this should be integrated with the DOM nodes from Rust?
 struct RenderNode {
     std::string tag;        // HTML tag name
     std::string content;    // Text content
@@ -76,7 +74,6 @@ struct RenderNode {
         : tag(t), content(c) {}
     
     // Destructor - needs to clean up children
-    // Note: I need to make sure this doesn't cause memory leaks
     ~RenderNode() {
         for (auto child : children) {
             delete child;
